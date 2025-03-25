@@ -98,11 +98,27 @@ class MultiHeadAttention(nn.Module):
         out = self.w_o(out)
         return out
 
-class MLP(nn.Module):
-    def __init__(self, dim):
+class SwiGLUMLP(nn.Module):
+    def __init__(self, model_dim, ff_dim=None):
+        if ff_dim is None: ff_dim = model_dim * 8 // 3
         super().__init__()
-        self.l1 = nn.Linear(dim, dim)
-        self.l2 = nn.Linear(dim, dim)
+        self.l1 = nn.Linear(model_dim, ff_dim, bias=False)
+        self.l2 = nn.Linear(model_dim, ff_dim, bias=False)
+        self.l3 = nn.Linear(ff_dim, model_dim, bias=False)
+
+    def forward(self, x):
+        out1 = self.l1(x)
+        out2 = self.l2(x)
+        out = nn.SiLU()(out1) * out2
+        out = self.l2(out)
+        return out
+    
+class MLP(nn.Module):
+    def __init__(self, model_dim, ff_dim=None):
+        if ff_dim is None: ff_dim = model_dim * 4 
+        super().__init__()
+        self.l1 = nn.Linear(model_dim, ff_dim)
+        self.l2 = nn.Linear(ff_dim, model_dim)
 
     def forward(self, x):
         out = self.l1(x)
